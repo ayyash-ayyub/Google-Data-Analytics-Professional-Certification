@@ -1,0 +1,319 @@
+---
+title: "Google Data Analytics Certificate -  Capstone Project"
+Author: Abdul Rizal Adomoo
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Installing packages
+```{r}
+install.packages("tidyverse")
+install.packages("markdown")
+install.packages("sqldf")
+install.packages("maps")
+install.packages("rgdal")
+install.packages("ggrepel")
+library("tidyverse")
+library("lubridate")
+library("markdown")
+library("sqldf")
+library("maps")
+library("rgdal")
+library("ggrepel")
+
+```
+
+## Setting working directory, membuat dataframe .csv file.
+```{r}
+setwd("/Users/AYYUB/Desktop/2022/dataset/")
+
+
+oktober_2018 <- read.csv("oktober_2018.csv", sep=";")
+november_2018 <- read.csv("november_2018.csv", sep=";")
+desember_2018 <- read.csv("desember_2018.csv", sep=";")
+januari_2019 <- read.csv("januari_2019.csv", sep=";")
+februari_2019 <- read.csv("februari_2019.csv", sep=";")
+maret_2019 <- read.csv("maret_2019.csv", sep=";")
+april_2019 <- read.csv("april_2019.csv", sep=";")
+may_2019 <- read.csv("may_2019.csv", sep=";")
+juni_2019 <- read.csv("juni_2019.csv", sep=";")
+oct_2019 <- read.csv("oct_2019.csv", sep=";")
+nov_2019 <- read.csv("nov_2019.csv", sep=";")
+des_2019 <- read.csv("des_2019.csv", sep=";")
+
+```
+
+##  Glimpsing a dataframe / cek
+
+```{r}
+glimpse(des_2019)
+```
+
+
+## Merjer semua dataframe
+### 1, mengkalkulasi dan memverfikasi jumlah row yang akan di merge
+```{r}
+tot_rows <- nrow(oktober_2018) + nrow(november_2018) + nrow(desember_2018) + nrow(januari_2019) + nrow(februari_2019) + nrow(maret_2019) + nrow(april_2019) + nrow(may_2019) + nrow(juni_2019) + nrow(oct_2019) + nrow(nov_2019) + nrow(des_2019)
+```
+
+### membuat  bind
+```{r}
+df_1 <- do.call("rbind", list(oktober_2018, november_2018, desember_2018, januari_2019, februari_2019, maret_2019, april_2019, may_2019, juni_2019, oct_2019, nov_2019, des_2019))
+```
+
+### checking jumlah row apakah sama
+```{r}
+if (tot_rows == nrow(df_1)){
+  print("true, data verified.")
+} else{
+  print("Error, silahkan cek lagi dan verifikasi lagi data.")
+}
+
+```
+
+## merubah tipedata started_at, ended_at to datetime, ride_length ke format time untuk semua dataset
+```{r}
+df_1 <- df_1 %>%
+  mutate(started_at = as_datetime(df_1$started_at, format = "%d/%m/%Y %H:%M")) %>%
+  mutate(ended_at = as_datetime(df_1$ended_at, format = "%d/%m/%Y %H:%M")) %>%
+  mutate(ride_length = as.difftime(df_1$ride_length, format = "%H:%M:%S"))
+
+```
+
+## menemukan nilai mean dari  ride_length column, dan   max ride length
+```{r}
+mean_r_length <- as.numeric(mean(df_1$ride_length))/60
+cat("rata2 ride length dalam setahun:",mean_r_length,"minutes")
+
+max_r_length <- as.numeric(max(df_1$ride_length))/3600
+cat("rider terpanjang dalam setahun:",max_r_length,"hours")
+```
+
+## membuat dataframe untuk  visualisation.
+## fungsi sqldf dan SQL.
+###   membuat dua dataframe dengan 5 top start dan end station  + no. of trips per mem/cas
+
+####Top 5  geolocations for members
+```{r}
+mem_start_geo <- sqldf("SELECT member_casual, start_station_name AS Start, 
+                start_lat AS Starting_Latitude,
+                start_lng As Starting_Longitude, count(start_station_name) AS Num_Trips
+                FROM df_1
+                WHERE start_station_name IS NOT ''
+                AND member_casual = 'member'
+                GROUP BY start_station_name
+                ORDER BY count(start_station_name) DESC
+                LIMIT 5", method = "auto")
+                
+```
+
+####Top 5 geolocations for casuals
+```{r}
+cas_start_geo <- sqldf("SELECT member_casual, start_station_name AS Start, 
+                start_lat AS Starting_Latitude, start_lng As Starting_Longitude,
+                count(start_station_name) AS Num_Trips
+                FROM df_1
+                WHERE start_station_name IS NOT ''
+                AND member_casual = 'casual'
+                GROUP BY start_station_name
+                ORDER BY count(start_station_name) DESC
+                LIMIT 5", method = "auto")
+```
+
+###Binding dua  tables kedalam dataframe, kemudian menampilkan 
+```{r}
+start_geo <- rbind(mem_start_geo, cas_start_geo)
+
+View(start_geo)
+```
+
+### Changing the datatype of the coordinates to real numbers to use for plots
+```{r}
+start_geo$Starting_Latitude = as.numeric(gsub(",",".",start_geo$Starting_Latitude,fixed=TRUE))
+start_geo$Starting_Longitude = as.numeric(gsub(",",".",start_geo$Starting_Longitude,fixed=TRUE))
+```
+
+####Top 5 ending geolocations for members
+```{r}
+
+mem_end_geo <- sqldf("SELECT member_casual, end_station_name AS End, 
+                end_lat AS Ending_Latitude,
+                end_lng As Ending_Longitude, count(end_station_name) AS Num_Trips
+                FROM df_1
+                WHERE end_station_name IS NOT ''
+                AND member_casual = 'member'
+                GROUP BY end_station_name
+                ORDER BY count(end_station_name) DESC
+                LIMIT 5", method = "auto")
+```
+
+####Top 5 ending geolocations for casuals
+```{r}
+cas_end_geo <- sqldf("SELECT member_casual, end_station_name AS End, 
+                end_lat AS Ending_Latitude, end_lng As Ending_Longitude,
+                count(end_station_name) AS Num_Trips
+                FROM df_1
+                WHERE end_station_name IS NOT ''
+                AND member_casual = 'casual'
+                GROUP BY end_station_name
+                ORDER BY count(end_station_name) DESC
+                LIMIT 5", method = "auto")
+```
+
+###Binding dua  tables kedalam dataframe, kemudian menampilkan 
+```{r}
+end_geo <- rbind(mem_end_geo, cas_end_geo)
+
+View(end_geo)
+```
+
+### merubah data tipecoordinates ke  real number untuk keperluan plot
+```{r}
+end_geo$Ending_Latitude = as.numeric(gsub(",",".",end_geo$Ending_Latitude, fixed=TRUE))
+end_geo$Ending_Longitude = as.numeric(gsub(",",".",end_geo$Ending_Longitude, fixed=TRUE))
+```
+
+## membuat geolocation mapdari  top 5 start and end stations
+###Getting a shapefile dari  Chicago, dan fortifying kedalam dataframe 
+```{r}
+chi_map <- readOGR(dsn="C:/Users/quent/OneDrive/Documents/R/Projects/Google Capstone/Maps", layer="geo_export_b9804a71-fc32-4cb9-ac05-b4cc9364243d")
+chi_df = fortify(chi_map)
+```
+
+## Plotting  start station geolocations.
+```{r}
+ssgmap <-ggplot() +
+    geom_polygon(data = chi_df, aes(x = long, y=lat , group = group), colour = 'grey', 
+    fill = 'chartreuse4', size = .7) +
+    geom_point(data = start_geo,
+             aes(x = Starting_Longitude, y = Starting_Latitude, size = Num_Trips, color = member_casual), 
+             alpha = 1) +
+    geom_label_repel(data = start_geo,
+                   aes(x = Starting_Longitude, y = Starting_Latitude, label = Start),
+                   box.padding   = 0.4, 
+                   point.padding = 0.65,
+                   segment.color = 'gray50') +
+  scale_colour_manual(values=c(member = 'orange',  casual= 'blue'))+
+  facet_wrap(~member_casual) +
+  labs(title = "Geolocation Of The Top 5 Starting Stations.", size = 'Number of Trips',
+       color = 'Rider Type') +
+  coord_cartesian(xlim = c(-87.7, -87.55), ylim = c(41.85, 41.95))+ 
+  theme(panel.background = element_rect(fill = "lightblue")) +
+        theme(panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+ssgmap
+```
+
+## Plotting the end station geolocations.
+```{r}
+esgmap <- ggplot() +
+    geom_polygon(data = chi_df, aes(x = long, y=lat , group = group), colour = 'grey', 
+    fill = 'chartreuse4', size = .7) +
+  geom_point(data = end_geo,
+             aes(x = Ending_Longitude, y = Ending_Latitude, size = Num_Trips, color = member_casual),
+             alpha = 1) +
+  geom_label_repel(data = end_geo,
+                   aes(x = Ending_Longitude, y = Ending_Latitude, label = End),
+                   box.padding   = 0.4, 
+                   point.padding = 0.65,
+                   segment.color = 'gray50') +
+  scale_colour_manual(values=c(member = 'orange',  casual= 'blue')) +
+  facet_wrap(~member_casual) +
+  labs(title = "Geolocation Of The Top 5 Ending Stations.", size = 'Number of Trips',
+       color = 'Rider Type') +
+  coord_cartesian(xlim = c(-87.7, -87.55), ylim = c(41.85, 41.95)) + 
+    theme(panel.background = element_rect(fill = "lightblue")) +
+    theme(panel.border = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+esgmap
+```
+
+## SQL Queries for the yearly Mode of day_of_week (total, members, casuals)
+```{r}
+mode_t <- sqldf("SELECT day_of_week, member_casual, COUNT(day_of_week) AS Total
+                 FROM df_1
+                 GROUP BY member_casual, day_of_week
+                 ORDER BY day_of_week DESC", method = "auto")
+```
+
+## Replacing the numerical values dengan nama minggu
+```{r}
+mode_t$day_of_week[mode_t$day_of_week == "1"] <- "Minggu"
+mode_t$day_of_week[mode_t$day_of_week == "2"] <- "Senin"
+mode_t$day_of_week[mode_t$day_of_week == "3"] <- "Selasa"
+mode_t$day_of_week[mode_t$day_of_week == "4"] <- "Rabu"
+mode_t$day_of_week[mode_t$day_of_week == "5"] <- "Kamis"
+mode_t$day_of_week[mode_t$day_of_week == "6"] <- "Jumat"
+mode_t$day_of_week[mode_t$day_of_week == "7"] <- "Sabtu"
+
+```
+##Plotting the Modes
+
+
+```{r}
+mode_t$day_of_week <- factor(mode_t$day_of_week, levels = rev(unique(mode_t$day_of_week)), ordered=TRUE)
+```
+
+### fungsi untuk menghitung casual dan  member riders, untuk ke plot
+
+```{r}
+mode_t <- mode_t %>%
+  arrange(day_of_week, rev(member_casual)) %>%
+  group_by(day_of_week) %>%
+  mutate(GTotal = cumsum(Total) - 0.5 * Total)
+```
+
+
+```{r}
+Mode_plot <- ggplot(data = mode_t, aes(x = day_of_week, y = Total, fill = member_casual)) +
+             scale_fill_manual(values=c(member = 'orange',  casual= 'blue')) +
+  geom_col() +
+  geom_text(aes(y = GTotal, label = Total), vjust = 1.5, colour = "white") +
+  labs(title = "Yearly Total Rides Per Day of Week.", x = "Day of Week",
+       y = "Total Rides", fill = "Rider Type") +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+
+Mode_plot
+
+```
+
+## A query menampilkan return results berdasarkan  rideble types yang digunakan  members
+```{r}
+bike_df <- sqldf("SELECT rideable_type, member_casual, count(rideable_type) as number_of_uses
+                 FROM df_1
+                 GROUP BY member_casual, rideable_type
+                 ORDER BY count(rideable_type) DESC", method = "auto" )
+```
+
+### merubah nama awal kapital  dan menghapus underscore
+```{r}
+bike_df$rideable_type[bike_df$rideable_type == "classic_bike"] <- "Classic Bike"
+bike_df$rideable_type[bike_df$rideable_type == "docked_bike"] <- "Docked Bike"
+bike_df$rideable_type[bike_df$rideable_type == "electric_bike"] <- "Electric Bike"
+```
+
+###  visualisasi bar plot all summary
+```{r}
+bike_plot <- ggplot(data = bike_df, aes(x = rideable_type, y = number_of_uses, fill = member_casual)) +
+  scale_fill_manual(values=c(member = 'orange',  casual= 'blue')) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = number_of_uses),  vjust = -0.3 ,colour = "black", 
+            position = position_dodge(.9)) +
+  labs(title = "Yearly Total Rides Per Rideable Type.", x = "Rideable Type",
+       y = "Total Rides", fill = "Rider Type") +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+
+bike_plot
+```
+
+#END
