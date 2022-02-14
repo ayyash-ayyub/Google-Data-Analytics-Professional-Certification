@@ -182,7 +182,7 @@ end_geo$Ending_Longitude = as.numeric(gsub(",",".",end_geo$Ending_Longitude, fix
 ## membuat geolocation mapdari  top 5 start and end stations
 ###Getting a shapefile dari  Chicago, dan fortifying kedalam dataframe 
 ```{r}
-chi_map <- readOGR(dsn="C:/Users/quent/OneDrive/Documents/R/Projects/Google Capstone/Maps", layer="geo_export_b9804a71-fc32-4cb9-ac05-b4cc9364243d")
+chi_map <- readOGR(dsn="C:/Users/AYYUB/Desktop/2022/dataset/Maps", layer="geo_export_b9804a71-fc32-4cb9-ac05-b4cc9364243d")
 chi_df = fortify(chi_map)
 ```
 
