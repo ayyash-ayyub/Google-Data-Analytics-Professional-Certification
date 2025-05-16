@@ -4,5 +4,5 @@
 
 This repository written for reference and self-documentation purpose
 Data analytics is the collection, transformation, and organization of data in order to draw conclusions, make predictions, and drive informed decision making.
-for collaboration and researcher contact : abdulrizal@seamolec.org
+for collaboration and researcher contact : abdul.rizal@ecampus.ut.ac.id
 
